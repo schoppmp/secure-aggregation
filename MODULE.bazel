@@ -1,0 +1,111 @@
+"Secure Aggregation"
+
+module(
+    name = "secure_aggregation",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "rules_rust", version = "0.65.0")
+bazel_dep(name = "rules_cc", version = "0.2.9")
+bazel_dep(name = "rules_license", version = "1.0.0")
+bazel_dep(name = "protobuf", version = "33.0-rc1")
+archive_override(
+    # Patches protobuf to make the Rust libraries visible. See
+    # https://github.com/protocolbuffers/protobuf/issues/23866.
+    module_name = "protobuf",
+    integrity = "sha256-n7r7YMeWhML9K/XhzBWVMXW30fErl3Hfp2hoxLNy+fs=",
+    strip_prefix = "protobuf-b53a3ab3602e5863861589daa2bc48232af330ad",
+    urls = ["https://github.com/google/protobuf/archive/b53a3ab3602e5863861589daa2bc48232af330ad.zip"],
+)
+
+bazel_dep(name = "abseil-cpp", version = "20250814.1")
+bazel_dep(name = "googletest", version = "1.17.0.bcr.1")
+bazel_dep(name = "tink_cc", version = "2.4.0")
+bazel_dep(name = "shell-encryption", version = "0.0.0")
+archive_override(
+    module_name = "shell-encryption",
+    integrity = "sha256-qPgdzLiDGXZwj/p5xOuZRQKvqU/qrS0mI8DLhiBWyi0=",
+    strip_prefix = "shell-encryption-259ce90fdd021d035d237be3dce5ec5a17ff0367",
+    urls = [
+        "https://github.com/google/shell-encryption/archive/259ce90fdd021d035d237be3dce5ec5a17ff0367.zip",
+    ],
+)
+
+bazel_dep(name = "cxx.rs", version = "1.0.186")
+
+crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+crate.spec(
+    features = [
+        "alloc",
+        "default",
+        "getrandom",
+        "libc",
+        "small_rng",
+        "std",
+        "std_rng",
+    ],
+    package = "rand",
+    version = "0.8.5",
+)
+crate.spec(
+    features = [
+        "anyhow",
+    ],
+    package = "googletest",
+    version = "0.14.2",
+)
+crate.spec(
+    features = [
+        "alloc",
+        "group",
+        "digest",
+        "precomputed-tables",
+        "rand_core",
+        "zeroize",
+        "serde",
+    ],
+    package = "curve25519-dalek",
+    version = "4.1.3",
+)
+crate.spec(
+    features = [
+        "color",
+        "default",
+        "derive",
+        "env",
+        "error-context",
+        "help",
+        "std",
+        "string",
+        "suggestions",
+        "unstable-ext",
+        "usage",
+        "wrap_help",
+    ],
+    package = "clap",
+    version = "4.5.38",
+)
+crate.spec(
+    features = [],
+    package = "thiserror",
+    version = "1.0.69",
+)
+crate.spec(
+    features = [
+        "default",
+        "std",
+    ],
+    package = "merlin",
+    version = "3.0.0",
+)
+crate.spec(
+    features = [
+        "default",
+        "std",
+    ],
+    package = "sha3",
+    version = "0.10.8",
+)
+crate.from_specs()
+use_repo(crate, crate_index = "crates")
