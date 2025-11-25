@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@protobuf//rust:defs.bzl", "rust_proto_library")
 
 package(
     default_applicable_licenses = [
@@ -20,11 +22,12 @@ package(
     default_visibility = ["//:internal"],
 )
 
-# linear inner product zero-knowledge proof.
 rust_library(
     name = "linear_innerproduct",
     srcs = ["linear_ip.rs"],
     deps = [
+        ":proofs_rust_proto",
+        "@protobuf//rust:protobuf",
         "@crate_index//:curve25519-dalek",
         "@crate_index//:merlin",
         "@crate_index//:rand",
@@ -77,6 +80,8 @@ rust_library(
     srcs = ["rlwe_relation.rs"],
     deps = [
         ":linear_innerproduct",
+        ":proofs_rust_proto",
+        "@protobuf//rust:protobuf",
         "@crate_index//:curve25519-dalek",
         "@crate_index//:merlin",
         "@crate_index//:rand",
@@ -100,4 +105,14 @@ rust_test(
         "//willow/src/shell:ahe_shell",
         "//willow/src/testing_utils:shell_testing_parameters",
     ],
+)
+
+proto_library(
+    name = "proofs_proto",
+    srcs = ["proofs.proto"],
+)
+
+rust_proto_library(
+    name = "proofs_rust_proto",
+    deps = [":proofs_proto"],
 )

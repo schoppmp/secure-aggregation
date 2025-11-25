@@ -17,6 +17,8 @@ use curve25519_dalek::scalar::Scalar;
 use linear_innerproduct::{
     LinearInnerProductProof, LinearInnerProductProver, LinearInnerProductVerifier,
 };
+use proofs_rust_proto::RlweRelationProofProto;
+use protobuf::proto;
 use rand::Rng;
 use shell_types::{write_rns_polynomial_to_buffer_128, RnsContextRef, RnsPolynomial};
 use zk_traits::{
@@ -576,6 +578,102 @@ pub struct RlweRelationProof {
     z_vw: Vec<Scalar>,
     // Proof of the polynomial relation mod P as an inner product proof.
     lip_proof: LinearInnerProductProof,
+}
+
+impl RlweRelationProof {
+    pub fn to_proto(&self) -> RlweRelationProofProto {
+        proto!(RlweRelationProofProto {
+            comm_rev: self.comm_rev.to_bytes().to_vec(),
+            comm_wrho: self.comm_wrho.to_bytes().to_vec(),
+            comm_y_r: self.comm_y_r.to_bytes().to_vec(),
+            comm_y_e: self.comm_y_e.to_bytes().to_vec(),
+            comm_y_vw: self.comm_y_vw.to_bytes().to_vec(),
+            z_r: self.z_r.iter().map(|s| s.as_bytes().to_vec()),
+            z_e: self.z_e.iter().map(|s| s.as_bytes().to_vec()),
+            z_vw: self.z_vw.iter().map(|s| s.as_bytes().to_vec()),
+            lip_proof: self.lip_proof.to_proto(),
+        })
+    }
+
+    pub fn from_proto(proto: &RlweRelationProofProto) -> Result<Self, status::StatusError> {
+        let comm_rev = CompressedRistretto(
+            proto
+                .comm_rev()
+                .try_into()
+                .map_err(|_| status::invalid_argument("comm_rev has incorrect length"))?,
+        );
+        let comm_wrho = CompressedRistretto(
+            proto
+                .comm_wrho()
+                .try_into()
+                .map_err(|_| status::invalid_argument("comm_wrho has incorrect length"))?,
+        );
+        let comm_y_r = CompressedRistretto(
+            proto
+                .comm_y_r()
+                .try_into()
+                .map_err(|_| status::invalid_argument("comm_y_r has incorrect length"))?,
+        );
+        let comm_y_e = CompressedRistretto(
+            proto
+                .comm_y_e()
+                .try_into()
+                .map_err(|_| status::invalid_argument("comm_y_e has incorrect length"))?,
+        );
+        let comm_y_vw = CompressedRistretto(
+            proto
+                .comm_y_vw()
+                .try_into()
+                .map_err(|_| status::invalid_argument("comm_y_vw has incorrect length"))?,
+        );
+
+        let z_r: Result<Vec<Scalar>, _> = proto
+            .z_r()
+            .iter()
+            .map(|bytes| {
+                let array: [u8; 32] = bytes
+                    .try_into()
+                    .map_err(|_| status::invalid_argument("z_r element has incorrect length"))?;
+                Ok(Scalar::from_bytes_mod_order(array))
+            })
+            .collect();
+
+        let z_e: Result<Vec<Scalar>, _> = proto
+            .z_e()
+            .iter()
+            .map(|bytes| {
+                let array: [u8; 32] = bytes
+                    .try_into()
+                    .map_err(|_| status::invalid_argument("z_e element has incorrect length"))?;
+                Ok(Scalar::from_bytes_mod_order(array))
+            })
+            .collect();
+
+        let z_vw: Result<Vec<Scalar>, _> = proto
+            .z_vw()
+            .iter()
+            .map(|bytes| {
+                let array: [u8; 32] = bytes
+                    .try_into()
+                    .map_err(|_| status::invalid_argument("z_vw element has incorrect length"))?;
+                Ok(Scalar::from_bytes_mod_order(array))
+            })
+            .collect();
+
+        let lip_proof = LinearInnerProductProof::from_proto(&proto.lip_proof().to_owned())?;
+
+        Ok(RlweRelationProof {
+            comm_rev,
+            comm_wrho,
+            comm_y_r,
+            comm_y_e,
+            comm_y_vw,
+            z_r: z_r?,
+            z_e: z_e?,
+            z_vw: z_vw?,
+            lip_proof,
+        })
+    }
 }
 
 pub struct RlweRelationProver {
@@ -1703,6 +1801,56 @@ mod tests {
                 .message()
                 .contains("final check"));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_proof_proto_roundtrip() -> googletest::Result<()> {
+        // We create an ahe_parameters instance to get the context reference and moduli objects.
+        let qvec = vec![1000_000_009];
+        let seed_wrapper = generate_seed()?;
+        let ahe_parameters = create_public_parameters(2, 54001, &qvec, 1, 1.0, 1.0, &seed_wrapper)?;
+        let context = get_rns_context_ref(&ahe_parameters);
+        let n = 4;
+        let q = 1000_000_009;
+        let moduli = get_moduli(&ahe_parameters);
+
+        let a_buffer = [1, 2, 3, 4];
+        let r_buffer = [1, 0, 1, -1];
+        let e_buffer = [5, -9, 1, 12];
+        let c_buffer = [5, -8, 9, 17];
+        let v_buffer = [-1, -1, 4, 0];
+
+        let a = read_small_rns_polynomial_from_buffer(&a_buffer, n as u64, &moduli)?;
+        let c = read_small_rns_polynomial_from_buffer(&c_buffer, n as u64, &moduli)?;
+        let r = read_small_rns_polynomial_from_buffer(&r_buffer, n as u64, &moduli)?;
+        let e = read_small_rns_polynomial_from_buffer(&e_buffer, n as u64, &moduli)?;
+        let v = read_small_rns_polynomial_from_buffer(&v_buffer, n as u64, &moduli)?;
+
+        let statement = RlweRelationProofStatement {
+            n: n,
+            context: context,
+            a: &a,
+            flip_a: false,
+            c: &c,
+            q: q,
+            bound_e: 16,
+            bound_r: 1,
+        };
+        let witness = RlweRelationProofWitness { r: &r, e: &e, v: &v };
+        let transcript_initializer = b"Rlwe Test Transcript";
+
+        let prover = RlweRelationProver::new(b"42", statement.n);
+        let mut transcript = MerlinTranscript::new(transcript_initializer);
+        let proof = prover.prove(&statement, &witness, &mut transcript)?;
+
+        // Test the proto roundtrip
+        let proto = proof.to_proto();
+        let proof_from_proto = RlweRelationProof::from_proto(&proto)?;
+
+        let verifier = RlweRelationVerifier::new(b"42", statement.n);
+        let mut transcript = MerlinTranscript::new(transcript_initializer);
+        verifier.verify(&statement, &proof_from_proto, &mut transcript)?;
         Ok(())
     }
 }
