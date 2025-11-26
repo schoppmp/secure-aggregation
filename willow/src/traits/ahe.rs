@@ -34,10 +34,12 @@ pub trait AheBase: Sized {
 
     /// Public key. Can be obtained by aggregating public keyshares.
     type PublicKey;
-    fn aggregate_public_key_shares(
+    fn aggregate_public_key_shares<'a>(
         &self,
-        public_key_shares: &[Self::PublicKeyShare],
-    ) -> Result<Self::PublicKey, StatusError>;
+        public_key_shares: impl IntoIterator<Item = &'a Self::PublicKeyShare>,
+    ) -> Result<Self::PublicKey, StatusError>
+    where
+        <Self as AheBase>::PublicKeyShare: 'a;
 
     /// Plaintext. Supports addition.
     type Plaintext;

@@ -73,7 +73,9 @@ fn encrypt_decrypt_one() -> googletest::Result<()> {
     let public_key_share = decryptor.create_public_key_share(&mut decryptor_state).unwrap();
 
     // Server handles the public key share.
-    server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+    server
+        .handle_decryptor_public_key_share(public_key_share, "Decryptor 0", &mut server_state)
+        .unwrap();
 
     // Server creates the public key.
     let public_key = server.create_decryptor_public_key(&server_state).unwrap();
@@ -152,7 +154,9 @@ fn encrypt_decrypt_multiple_clients() -> googletest::Result<()> {
     let public_key_share = decryptor.create_public_key_share(&mut decryptor_state).unwrap();
 
     // Server handles the public key share.
-    server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+    server
+        .handle_decryptor_public_key_share(public_key_share, "Decryptor 0", &mut server_state)
+        .unwrap();
 
     // Server creates the public key.
     let public_key = server.create_decryptor_public_key(&server_state).unwrap();
@@ -277,7 +281,9 @@ fn encrypt_decrypt_multiple_clients_including_invalid_proofs() -> googletest::Re
     let public_key_share = decryptor.create_public_key_share(&mut decryptor_state).unwrap();
 
     // Server handles the public key share.
-    server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+    server
+        .handle_decryptor_public_key_share(public_key_share, "Decryptor 0", &mut server_state)
+        .unwrap();
 
     // Server creates the public key.
     let public_key = server.create_decryptor_public_key(&server_state).unwrap();
@@ -394,7 +400,7 @@ fn encrypt_decrypt_many_clients_decryptors() -> googletest::Result<()> {
     // polynomials generated from the seeds) and `prng`.
     let mut decryptors = vec![];
     let mut decryptor_states = vec![];
-    for _ in 0..NUM_DECRYPTORS {
+    for i in 0..NUM_DECRYPTORS {
         let vahe = ShellVahe::new(ahe_config.clone(), CONTEXT_STRING).unwrap();
         let seed = SingleThreadHkdfPrng::generate_seed().unwrap();
         let prng = SingleThreadHkdfPrng::create(&seed).unwrap();
@@ -405,7 +411,13 @@ fn encrypt_decrypt_many_clients_decryptors() -> googletest::Result<()> {
         let public_key_share = decryptor.create_public_key_share(&mut decryptor_state).unwrap();
 
         // Server handles the public key share.
-        server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+        server
+            .handle_decryptor_public_key_share(
+                public_key_share,
+                format!("Decryptor {i}").as_str(),
+                &mut server_state,
+            )
+            .unwrap();
 
         decryptors.push(decryptor);
         decryptor_states.push(decryptor_state);
@@ -521,7 +533,13 @@ fn encrypt_decrypt_no_dropout() -> googletest::Result<()> {
         let public_key_share =
             decryptors[i].create_public_key_share(&mut decryptor_states[i]).unwrap();
         // Server handles the public key share.
-        server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+        server
+            .handle_decryptor_public_key_share(
+                public_key_share,
+                format!("Decryptor {i}").as_str(),
+                &mut server_state,
+            )
+            .unwrap();
     }
 
     // Server creates the public key.

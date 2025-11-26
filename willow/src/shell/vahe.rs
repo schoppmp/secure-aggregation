@@ -85,9 +85,9 @@ impl AheBase for ShellVahe {
         Ok(ShellVahe { ahe: ahe, q: q, public_seed: public_seed })
     }
 
-    fn aggregate_public_key_shares(
+    fn aggregate_public_key_shares<'a>(
         &self,
-        public_key_shares: &[Self::PublicKeyShare],
+        public_key_shares: impl IntoIterator<Item = &'a Self::PublicKeyShare>,
     ) -> Result<Self::PublicKey, StatusError> {
         self.ahe.aggregate_public_key_shares(public_key_shares)
     }

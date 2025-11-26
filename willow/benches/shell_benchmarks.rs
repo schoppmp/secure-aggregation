@@ -156,7 +156,9 @@ fn setup_base(args: &Args) -> BaseInputs {
     let public_key_share = decryptor.create_public_key_share(&mut decryptor_state).unwrap();
 
     // Server handles the public key share.
-    server.handle_decryptor_public_key_share(public_key_share, &mut server_state).unwrap();
+    server
+        .handle_decryptor_public_key_share(public_key_share, "Decryptor 0", &mut server_state)
+        .unwrap();
 
     // Server creates the public key.
     let public_key = server.create_decryptor_public_key(&server_state).unwrap();

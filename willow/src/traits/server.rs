@@ -34,6 +34,7 @@ pub trait SecureAggregationServer<Kahe: KaheBase, Vahe: VaheBase> {
     fn handle_decryptor_public_key_share(
         &self,
         key_share: DecryptorPublicKeyShare<Vahe>,
+        decryptor_id: &str,
         server_state: &mut Self::ServerState,
     ) -> Result<(), StatusError>;
 
@@ -75,4 +76,11 @@ pub trait SecureAggregationServer<Kahe: KaheBase, Vahe: VaheBase> {
         &self,
         server_state: &Self::ServerState,
     ) -> Result<Self::AggregationResult, StatusError>;
+
+    /// Merges two server states into one.
+    fn merge_server_states(
+        &self,
+        server_state_1: &Self::ServerState,
+        server_state_2: &Self::ServerState,
+    ) -> Result<Self::ServerState, StatusError>;
 }

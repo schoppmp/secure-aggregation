@@ -409,14 +409,14 @@ impl AheBase for ShellAhe {
         Ok(Self { public_ahe_parameters, num_coeffs })
     }
 
-    fn aggregate_public_key_shares(
+    fn aggregate_public_key_shares<'a>(
         &self,
-        public_key_shares: &[Self::PublicKeyShare],
+        public_key_shares: impl IntoIterator<Item = &'a Self::PublicKeyShare>,
     ) -> Result<Self::PublicKey, status::StatusError> {
         let moduli = ahe::get_moduli(&self.public_ahe_parameters);
 
         let mut public_key = ahe::create_zero_rns_polynomial(&self.public_ahe_parameters)?;
-        for public_key_share in public_key_shares {
+        for public_key_share in public_key_shares.into_iter() {
             shell_types::add_in_place(&moduli, &public_key_share, &mut public_key)?;
         }
         Ok(public_key)

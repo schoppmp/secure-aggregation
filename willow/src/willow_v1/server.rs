@@ -19,6 +19,7 @@ use messages::{
     DecryptorPublicKeyShare, PartialDecryptionResponse,
 };
 use server_traits::SecureAggregationServer;
+use std::collections::HashMap;
 use vahe_traits::{EncryptVerify, Recover, VaheBase};
 
 /// The server struct, containing a WillowCommon instance. Only the clients messages are verified,
@@ -30,14 +31,21 @@ pub struct WillowV1Server<Kahe, Vahe: VaheBase> {
 
 /// State for the server.
 pub struct ServerState<Kahe: KaheBase, Vahe: VaheBase + PartialDec> {
-    decryptor_public_key_shares: Vec<DecryptorPublicKeyShare<Vahe>>,
+    /// The public key shares received from Decryptors. The key is the ID of the Decryptor.
+    decryptor_public_key_shares: HashMap<String, DecryptorPublicKeyShare<Vahe>>,
+    /// Running sum of client ciphertexts.
     client_sum: Option<(Kahe::Ciphertext, Vahe::RecoverCiphertext)>,
+    /// Running sum of partial decryption ciphertexts.
     partial_decryption_sum: Option<Vahe::PartialDecryption>,
 }
 
 impl<Kahe: KaheBase, Vahe: VaheBase + PartialDec> Default for ServerState<Kahe, Vahe> {
     fn default() -> Self {
-        Self { decryptor_public_key_shares: vec![], client_sum: None, partial_decryption_sum: None }
+        Self {
+            decryptor_public_key_shares: HashMap::new(),
+            client_sum: None,
+            partial_decryption_sum: None,
+        }
     }
 }
 
@@ -62,13 +70,20 @@ where
     type AggregationResult = Kahe::Plaintext;
 
     /// Handles a public key share received from a Decryptor, updating the
-    /// server state.
+    /// server state. `decryptor_id` is an arbitrary string and is used to deduplicate public key
+    /// shares when merging server states.
     fn handle_decryptor_public_key_share(
         &self,
         key_share: DecryptorPublicKeyShare<Vahe>,
+        decryptor_id: &str,
         server_state: &mut Self::ServerState,
     ) -> Result<(), status::StatusError> {
-        server_state.decryptor_public_key_shares.push(key_share);
+        if server_state.decryptor_public_key_shares.contains_key(decryptor_id) {
+            return Err(status::failed_precondition(format!(
+                "Public key share for decryptor with ID '{decryptor_id}' has already been handled."
+            )));
+        }
+        server_state.decryptor_public_key_shares.insert(decryptor_id.to_string(), key_share);
         Ok(())
     }
 
@@ -78,7 +93,9 @@ where
         &self,
         server_state: &Self::ServerState,
     ) -> Result<DecryptorPublicKey<Vahe>, status::StatusError> {
-        Ok(self.vahe.aggregate_public_key_shares(&server_state.decryptor_public_key_shares)?)
+        Ok(self
+            .vahe
+            .aggregate_public_key_shares(server_state.decryptor_public_key_shares.values())?)
     }
 
     /// Splits a client message into the ciphertext contribution and the
@@ -168,5 +185,61 @@ where
                 "Must handle at least one client message before requesting recovery",
             ))?
         }
+    }
+
+    /// Merges two server states into one. The resulting state will contain the sums of the two
+    /// client sums and partial decryption sums. The public key shares will be merged by joining all
+    /// public key shares with unique IDs. In case IDs are present in both server states, the public
+    /// key share from `server_state_1` will be used.
+    fn merge_server_states(
+        &self,
+        server_state_1: &Self::ServerState,
+        server_state_2: &Self::ServerState,
+    ) -> Result<Self::ServerState, status::StatusError> {
+        let mut merged_server_state = ServerState::default();
+        // Merge public key shares.
+        merged_server_state.decryptor_public_key_shares =
+            server_state_1.decryptor_public_key_shares.clone();
+        for (id, key_share) in server_state_2.decryptor_public_key_shares.iter() {
+            if !merged_server_state.decryptor_public_key_shares.contains_key(id) {
+                merged_server_state
+                    .decryptor_public_key_shares
+                    .insert(id.to_string(), key_share.clone());
+            }
+        }
+
+        merged_server_state.client_sum =
+            match (&server_state_1.client_sum, &server_state_2.client_sum) {
+                (
+                    Some((kahe_ciphertext_1, ahe_recover_ciphertext_1)),
+                    Some((kahe_ciphertext_2, ahe_recover_ciphertext_2)),
+                ) => {
+                    let mut merged_kahe_ciphertext = kahe_ciphertext_1.clone();
+                    let mut merged_ahe_recover_ciphertext = ahe_recover_ciphertext_1.clone();
+                    self.kahe
+                        .add_ciphertexts_in_place(kahe_ciphertext_2, &mut merged_kahe_ciphertext)?;
+                    self.vahe.add_recover_ciphertexts_in_place(
+                        ahe_recover_ciphertext_2,
+                        &mut merged_ahe_recover_ciphertext,
+                    )?;
+                    Some((merged_kahe_ciphertext, merged_ahe_recover_ciphertext))
+                }
+                (Some(s), None) | (None, Some(s)) => Some(s.clone()),
+                (None, None) => None,
+            };
+
+        merged_server_state.partial_decryption_sum =
+            match (&server_state_1.partial_decryption_sum, &server_state_2.partial_decryption_sum)
+            {
+                (Some(sum1), Some(sum2)) => {
+                    let mut merged_sum = sum1.clone();
+                    self.vahe.add_partial_decryptions_in_place(sum2, &mut merged_sum)?;
+                    Some(merged_sum)
+                }
+                (Some(s), None) | (None, Some(s)) => Some(s.clone()),
+                (None, None) => None,
+            };
+
+        Ok(merged_server_state)
     }
 }
