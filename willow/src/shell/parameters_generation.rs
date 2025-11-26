@@ -109,7 +109,6 @@ mod test {
             max_decryptor_dropouts: 0,
             max_number_of_clients: 1,
             session_id: String::from("test"),
-            willow_version: (0, 1),
         };
         let invalid_plaintext_bits = 0;
         let result = generate_packing_config(invalid_plaintext_bits, &agg_config);
@@ -131,7 +130,6 @@ mod test {
             max_decryptor_dropouts: 0,
             max_number_of_clients: 1,
             session_id: String::from("test"),
-            willow_version: (0, 1),
         };
         let result = generate_packing_config(plaintext_bits, &bad_agg_config);
         expect_true!(result.is_err());
@@ -153,7 +151,6 @@ mod test {
             max_decryptor_dropouts: 0,
             max_number_of_clients: 0,
             session_id: String::from("test"),
-            willow_version: (0, 1),
         };
         let result = generate_packing_config(plaintext_bits, &bad_agg_config);
         expect_true!(result.is_err());
@@ -171,7 +168,6 @@ mod test {
             max_decryptor_dropouts: 0,
             max_number_of_clients: 2,
             session_id: String::from("test"),
-            willow_version: (0, 1),
         };
         let result = generate_packing_config(plaintext_bits, &agg_config);
         expect_true!(result.is_err());
@@ -191,7 +187,6 @@ mod test {
             max_decryptor_dropouts: 0,
             max_number_of_clients: 1 << 8,
             session_id: String::from("test"),
-            willow_version: (0, 1),
         };
         let plaintext_bits = 24;
         let packed_vector_configs = generate_packing_config(plaintext_bits, &agg_config)?;

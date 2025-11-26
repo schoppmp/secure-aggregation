@@ -64,6 +64,5 @@ pub fn generate_aggregation_config(
         max_number_of_clients,
         max_decryptor_dropouts: 0,
         session_id: String::from("test"),
-        willow_version: (1, 0),
     }
 }

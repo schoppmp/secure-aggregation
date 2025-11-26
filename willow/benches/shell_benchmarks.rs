@@ -124,7 +124,6 @@ fn setup_base(args: &Args) -> BaseInputs {
         max_number_of_clients: args.max_num_clients as i64,
         max_decryptor_dropouts: 0,
         session_id: String::from("benchmark"),
-        willow_version: (1, 0),
     };
     let (kahe_config, ahe_config) = create_shell_configs(&aggregation_config).unwrap();
 

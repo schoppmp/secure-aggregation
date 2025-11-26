@@ -25,12 +25,11 @@ use std::collections::HashMap;
 ///                            aggregation.
 /// session_id:                The session id of the aggregation.
 /// willow_version:            The version of the willow protocol.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregationConfig {
     pub vector_lengths_and_bounds: HashMap<String, (isize, i64)>,
     pub max_number_of_decryptors: i64,
     pub max_decryptor_dropouts: i64,
     pub max_number_of_clients: i64,
     pub session_id: String,
-    pub willow_version: (u8, u8),
 }

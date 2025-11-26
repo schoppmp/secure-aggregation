@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@protobuf//rust:defs.bzl", "rust_proto_library")
@@ -28,7 +28,6 @@ rust_library(
     srcs = [
         "common.rs",
     ],
-    crate_root = "common.rs",
     deps = [
         "//shell_wrapper:status",
     ],
@@ -39,7 +38,6 @@ rust_library(
     srcs = [
         "client.rs",
     ],
-    crate_root = "client.rs",
     deps = [
         ":willow_api_common",
         ":willow_api_common_rust_proto",
@@ -52,7 +50,6 @@ rust_library(
     srcs = [
         "decryptor.rs",
     ],
-    crate_root = "decryptor.rs",
     deps = [
         ":willow_api_common",
         ":willow_api_common_rust_proto",
@@ -65,7 +62,6 @@ rust_library(
     srcs = [
         "server.rs",
     ],
-    crate_root = "server.rs",
     deps = [
         ":willow_api_common",
         ":willow_api_common_rust_proto",
@@ -78,7 +74,6 @@ rust_library(
     srcs = [
         "verifier.rs",
     ],
-    crate_root = "verifier.rs",
     deps = [
         ":willow_api_common",
         ":willow_api_common_rust_proto",
@@ -100,4 +95,26 @@ cc_proto_library(
 rust_proto_library(
     name = "willow_api_common_rust_proto",
     deps = [":willow_api_common_proto"],
+)
+
+rust_library(
+    name = "willow_api_common_serialization",
+    srcs = [
+        "common_serialization.rs",
+    ],
+    deps = [
+        ":willow_api_common",
+        ":willow_api_common_rust_proto",
+        "@protobuf//rust:protobuf",
+    ],
+)
+
+rust_test(
+    name = "willow_api_common_serialization_test",
+    crate = ":willow_api_common_serialization",
+    deps = [
+        ":willow_api_common_serialization",
+        "@crate_index//:googletest",
+        "//willow/src/testing_utils",
+    ],
 )
