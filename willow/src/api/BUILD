@@ -85,6 +85,10 @@ rust_library(
 proto_library(
     name = "willow_api_common_proto",
     srcs = ["common.proto"],
+    deps = [
+        "//willow/src/shell:shell_ciphertexts_proto",
+        "//willow/src/zk:proofs_proto",
+    ],
 )
 
 cc_proto_library(

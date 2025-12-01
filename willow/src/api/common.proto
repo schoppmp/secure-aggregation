@@ -16,6 +16,9 @@ edition = "2023";
 
 package secure_aggregation.willow;
 
+import "willow/src/shell/ciphertexts.proto";
+import "willow/src/zk/proofs.proto";
+
 option java_multiple_files = true;
 option java_outer_classname = "CommonProto";
 
@@ -39,9 +42,12 @@ message KeyGenRequest {}
 message KeyGenResponse {
   AggregationKey aggregation_key = 1;
 }
+
+/// The key for the aggregation.
+///
+/// This should be sent to the clients so they can encrypt their contributions.
 message AggregationKey {
-  // The key used for aggregation will take number 1 here.
-  reserved 1;
+  AhePublicKey ahe_public_key = 1;
 }
 
 /// The total contribution from the client.
@@ -51,10 +57,16 @@ message Contribution {
 }
 
 /// The contribution from the client to the server.
-message ContributionToServer {}
+message ContributionToServer {
+  AheRecoveryCiphertext ahe_recovery_ciphertext = 1;
+  KaheCiphertext kahe_ciphertext = 2;
+}
 
 /// The contribution from the client to the verifier.
-message ContributionToVerifier {}
+message ContributionToVerifier {
+  AhePartialDecCiphertext ahe_partial_dec_ciphertext = 1;
+  RlweRelationProofProto rlwe_relation_proof = 2;
+}
 
 message VerificationRequest {
   repeated ContributionToVerifier contributions = 1;
@@ -71,9 +83,13 @@ message VerificationSummaryResponse {
 }
 
 /// The request from the verifier to the decryptor to decrypt the aggregate.
-message DecryptionRequest {}
+message DecryptionRequest {
+  AhePartialDecCiphertext ahe_partial_dec_ciphertext = 1;
+}
 
-message DecryptionResponse {}
+message DecryptionResponse {
+  AhePartialDecryption ahe_partial_decryption = 1;
+}
 
 /// This is unimplemented for the single decryptor version
 message DropoutRecoveryRequest {}
